@@ -1,0 +1,6 @@
+
+{
+  "name": "QuickCare - Doctor Appointment System",
+  "description": "A web application for finding doctors and booking appointments. Users can search for doctors by name or specialization, view doctor profiles, check available slots, and manage their appointments.",
+  "requestFramePermissions": []
+}
