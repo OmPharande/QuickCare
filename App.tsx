@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Doctor, Appointment, ModalType, CurrentUser } from './types';
+import { Doctor, Appointment, ModalType } from './types';
 import { DOCTORS_DATA } from './constants';
 import Header from './components/Header';
 import DoctorCard from './components/DoctorCard';
@@ -44,6 +44,7 @@ const App: React.FC = () => {
         // Ensure frontend uses a consistent field name
         const normalized = data.map((item: any) => ({
           ...item,
+          id: item._id || item.id, // ensure unique identifier exists
           appointmentTime: item.appointmentTime || item.slot,
         }));
         setAppointments(normalized);
@@ -88,14 +89,13 @@ const App: React.FC = () => {
     setSelectedDoctor(null);
   }, []);
 
-  const handleConfirmBooking = useCallback(async (patientName: string, appointmentTime: string, notes?: string) => {
+  const handleConfirmBooking = useCallback(async (patientName: string, appointmentTime: string, notes?: string, gender?: string, age?: number) => {
     if (!selectedDoctor || !currentUser || currentUser.type !== 'patient') {
         showAlert('Error booking appointment. Please ensure you are logged in as a patient.', 'error');
         return;
     }
 
     try {
-      // Show a loading alert (optional)
       showAlert('Booking appointment...', 'info');
       const response = await fetch('/api/appointments', {
         method: 'POST',
@@ -106,6 +106,9 @@ const App: React.FC = () => {
         body: JSON.stringify({
           doctorId: selectedDoctor.id,
           slot: appointmentTime,
+          gender,
+          age,
+          notes,
         }),
       });
 
@@ -125,7 +128,10 @@ const App: React.FC = () => {
         patientId: currentUser.id,
         appointmentTime: data.slot,
         notes,
+        gender: data.gender,
+        age: data.age,
       };
+
       setAppointments(prev => [...prev, newAppointment]);
       showAlert('Appointment booked successfully!', 'success');
       handleCloseModal();
@@ -170,6 +176,30 @@ const App: React.FC = () => {
     const matchesSpecialization = selectedSpecialization ? doctor.specialization === selectedSpecialization : true;
     return matchesSearchTerm && matchesSpecialization;
   });
+
+  // Update appointment status when doctor marks it as done/no_show/cancelled
+  const handleUpdateAppointmentStatus = useCallback(async (appointmentId: string, status: 'done' | 'no_show' | 'cancelled') => {
+    // Optimistic update UI first
+    setAppointments(prev => prev.map(app => app.id === appointmentId ? { ...app, status } : app));
+    try {
+      const res = await fetch(`/api/appointments/${appointmentId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to update status');
+      }
+      const updated = await res.json();
+      setAppointments(prev => prev.map(app => app.id === appointmentId ? { ...app, status: updated.status } : app));
+    } catch (err) {
+      showAlert('Could not update status on server.', 'error');
+      // Revert optimistic update
+      setAppointments(prev => prev.map(app => app.id === appointmentId ? { ...app, status: 'upcoming' } : app));
+    }
+  }, [showAlert]);
 
   if (authLoading) {
     return (
@@ -220,7 +250,7 @@ const App: React.FC = () => {
         </div>
 
         {currentUser?.type === 'doctor' ? (
-          <DoctorSchedule appointments={appointments} />
+          <DoctorSchedule appointments={appointments} onUpdateStatus={handleUpdateAppointmentStatus} />
         ) : (
           filteredDoctors.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

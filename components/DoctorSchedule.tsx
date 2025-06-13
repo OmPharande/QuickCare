@@ -1,17 +1,41 @@
 import React from 'react';
 import { Appointment } from '../types';
 
-interface Props {
+// Helper to convert relative time strings (e.g. "Today, 09:00 AM") to a Date object
+const parseDateTime = (dateTimeStr: string): Date => {
+  const now = new Date();
+  // Start with today's date at 00:00
+  const datePart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (dateTimeStr.startsWith('Tomorrow,')) {
+    datePart.setDate(datePart.getDate() + 1);
+  }
+  // For explicit weekday/date handling in future, extend here
+
+  const timeStr = dateTimeStr.split(', ')[1]; // "09:00 AM"
+  if (!timeStr) return datePart; // Fallback
+  const [time, modifier] = timeStr.split(' ');
+  let [hours, minutes] = time.split(':').map(Number);
+
+  if (modifier === 'PM' && hours < 12) hours += 12;
+  if (modifier === 'AM' && hours === 12) hours = 0;
+
+  datePart.setHours(hours, minutes, 0, 0);
+  return datePart;
+};
+
+interface UpdateProps {
   appointments: Appointment[];
+  onUpdateStatus: (id: string, status: 'done' | 'no_show' | 'cancelled') => void;
 }
 
-const DoctorSchedule: React.FC<Props> = ({ appointments }) => {
+const DoctorSchedule: React.FC<UpdateProps> = ({ appointments, onUpdateStatus }) => {
   const upcoming = appointments.sort((a, b) =>
-    new Date(a.appointmentTime).getTime() - new Date(b.appointmentTime).getTime()
+    parseDateTime(a.appointmentTime).getTime() - parseDateTime(b.appointmentTime).getTime()
   );
 
   const today = upcoming.filter(app => {
-    const d = new Date(app.appointmentTime);
+    const d = parseDateTime(app.appointmentTime);
     const now = new Date();
     return d.toDateString() === now.toDateString();
   });
@@ -23,17 +47,19 @@ const DoctorSchedule: React.FC<Props> = ({ appointments }) => {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const counts = Array.from({ length: daysInMonth }, () => 0);
   upcoming.forEach(appt => {
-    const d = new Date(appt.appointmentTime);
+    const d = parseDateTime(appt.appointmentTime);
     if (d.getMonth() === month && d.getFullYear() === year) {
       counts[d.getDate() - 1] += 1;
     }
   });
 
   const colorFor = (c: number) => {
-    if (c === 0) return 'bg-slate-100';
-    if (c === 1) return 'bg-sky-200';
-    if (c === 2) return 'bg-sky-400';
-    return 'bg-sky-600 text-white';
+    if (c === 0) return 'bg-slate-100';            // No appointments
+    if (c === 1) return 'bg-sky-100';              // 1 appointment
+    if (c === 2) return 'bg-sky-300';              // 2 appointments
+    if (c === 3) return 'bg-sky-500 text-white';   // 3 appointments
+    if (c === 4) return 'bg-sky-600 text-white';   // 4 appointments
+    return 'bg-sky-700 text-white';                // 5 or more appointments (cap)
   };
 
   return (
@@ -53,15 +79,30 @@ const DoctorSchedule: React.FC<Props> = ({ appointments }) => {
         {upcoming.length === 0 && (
           <p className="text-center text-gray-500">No upcoming appointments.</p>
         )}
-        {upcoming.map(appt => (
-          <div key={appt.id} className="border border-slate-200 rounded-lg p-4 mb-4 flex justify-between items-center">
-            <div>
-              <p className="font-medium text-slate-800">Patient: {appt.patientName}</p>
-              <p className="text-sm text-slate-500">Notes: {appt.notes || 'N/A'}</p>
+        {upcoming.map(appt => {
+          const apptDate = parseDateTime(appt.appointmentTime);
+          const isPast = apptDate < now;
+          return (
+            <div key={appt.id} className="border border-slate-200 rounded-lg p-4 mb-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <div>
+                <p className="font-medium text-slate-800">Patient: {appt.patientName}</p>
+                <p className="text-sm text-slate-500">Notes: {appt.notes || 'N/A'}</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-sky-600 font-semibold whitespace-nowrap">{appt.appointmentTime}</span>
+                {isPast && (!appt.status || appt.status === 'upcoming') && (
+                  <div className="flex gap-2">
+                    <button onClick={() => onUpdateStatus(appt.id, 'done')} className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded">Done</button>
+                    <button onClick={() => onUpdateStatus(appt.id, 'no_show')} className="px-3 py-1 bg-rose-500 hover:bg-rose-600 text-white text-xs rounded">No Show</button>
+                  </div>
+                )}
+                {appt.status && appt.status !== 'upcoming' && (
+                  <span className={`text-xs px-2 py-1 rounded ${appt.status==='done'?'bg-green-100 text-green-700':appt.status==='no_show'?'bg-rose-100 text-rose-700':'bg-slate-200 text-slate-700'}`}>{appt.status.replace('_',' ')}</span>
+                )}
+              </div>
             </div>
-            <div className="text-sky-600 font-semibold whitespace-nowrap">{appt.appointmentTime}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Calendar Heatmap */}

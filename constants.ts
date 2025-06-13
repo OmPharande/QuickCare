@@ -15,6 +15,7 @@ export const DOCTORS_DATA: Doctor[] = [
     experience: 15,
     location: "Sanjeevani OPD",
     city: "Satara",
+    reviews: [],
   },
   {
     id: 'doc2',
@@ -30,6 +31,7 @@ export const DOCTORS_DATA: Doctor[] = [
     experience: 12,
     location: "Arogya Clinic",
     city: "Satara",
+    reviews: [],
   },
   {
     id: 'doc3',
@@ -45,6 +47,7 @@ export const DOCTORS_DATA: Doctor[] = [
     experience: 10,
     location: "Sahyadri Polyclinic",
     city: "Satara",
+    reviews: [],
   },
   {
     id: 'doc4',
@@ -60,6 +63,7 @@ export const DOCTORS_DATA: Doctor[] = [
     experience: 18,
     location: "Krishna Wellness Hub",
     city: "Satara",
+    reviews: [],
   }
 ];
 

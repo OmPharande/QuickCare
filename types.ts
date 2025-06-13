@@ -1,3 +1,9 @@
+export interface Review {
+  id: string;
+  rating: number;
+  comment: string;
+  // Add more fields as needed
+}
 
 export interface Doctor {
   id: string;
@@ -10,6 +16,7 @@ export interface Doctor {
   experience: number; // years of experience
   location: string; // e.g. "Sanjeevani OPD, Satara" (This is the OPD name)
   city: string; // e.g. "Satara"
+  reviews: Review[];
 }
 
 export interface Appointment {
@@ -20,6 +27,9 @@ export interface Appointment {
   patientId?: string; // ID of the logged-in patient who booked
   appointmentTime: string;
   notes?: string;
+  gender: 'Male' | 'Female' | 'Other';
+  age: number;
+  status?: 'upcoming' | 'done' | 'no_show' | 'cancelled';
 }
 
 export enum ModalType {

@@ -6,12 +6,12 @@ const router = Router();
 // Create a new appointment
 router.post('/', async (req, res) => {
   const patientName = req.headers['x-patient-name'] as string;
-  const { doctorId, slot } = req.body;
-  if (!patientName || !doctorId || !slot) {
+  const { doctorId, slot, gender, age } = req.body;
+  if (!patientName || !doctorId || !slot || !gender || typeof age !== 'number') {
     return res.status(400).json({ message: 'Missing required fields' });
   }
   try {
-    const appointment = await Appointment.create({ patientName, doctorId, slot });
+    const appointment = await Appointment.create({ patientName, doctorId, slot, gender, age });
     res.status(201).json(appointment);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err });
@@ -44,6 +44,22 @@ router.get('/', async (req, res) => {
   try {
     const appointments = await Appointment.find(filter);
     res.json(appointments);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err });
+  }
+});
+
+// Update appointment status
+router.patch('/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (!['upcoming', 'done', 'no_show', 'cancelled'].includes(status)) {
+    return res.status(400).json({ message: 'Invalid status' });
+  }
+  try {
+    const appt = await Appointment.findByIdAndUpdate(id, { status }, { new: true });
+    if (!appt) return res.status(404).json({ message: 'Appointment not found' });
+    res.json(appt);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err });
   }
